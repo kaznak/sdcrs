@@ -1,0 +1,525 @@
+* COMMENT -*- Mode: org; -*-
+
+#+TITLE: Syntax of Sugar CSP description
+#+DATE: Last modified: Tue Jun 29 13:09:26 2010 JST
+#+AUTHOR: Naoyuki Tamura
+
++ Syntax of Sugar CSP description
+  - [[http://bach.istc.kobe-u.ac.jp/sugar/current/docs/syntax.html]]
++ Naoyuki Tamura
+  - http://bach.istc.kobe-u.ac.jp/tamura.html
+
+* Introduction
+This document explains the syntax of CSP (Constraint Satisfaction Problem) files for Sugar constraint solver. The syntax is designed to cover the abridged notation of the XCSP 2.1 format used at the International CSP Solver Competitions.
+
+* Preliminaries
+#+BEGIN_SRC 
+Integer ::=
+    Digit+ | -Digit+
+Digit ::=
+    0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+Symbol ::=
+    SymbolCharacter+  /* except sequences interpreted as integers */
+SymbolCharacter ::=
+    /* any character from A-Z a-z 0-9 _ . + - * / % = < > ! & | and \u00080-\u10FFFF */
+Comment ::=
+    ; /* followed by characters until the end of line */
+#+END_SRC
+
+* Domain Definitions
+** Syntax
+#+BEGIN_SRC 
+DomainDefinition ::=
+    (domain DomainName LowerBound UpperBound) |
+    (domain DomainName (Range+)) |
+    (domain DomainName Value)
+DomainName ::=
+    Symbol
+LowerBound ::=
+    Integer
+UpperBound ::=
+    Integer
+Value ::=
+    Integer
+Range ::=
+    Integer | (Integer Integer)
+#+END_SRC
+
+** Remarks
+Domain names should not be duplicated.
+** Examples
+#+BEGIN_SRC 
+(domain d0 1000 2000)         ; d0 = { x | 1000 ≤ x ≤ 2000 }
+(domain d1 ((1 3) 5 (10 12))) ; d1 = { 1, 2, 3, 5, 10, 11, 12 }
+(domain d2 1000)              ; d2 = { 1000 }
+#+END_SRC
+
+* Integer Variable Definitions
+** Syntax
+#+BEGIN_SRC 
+IntegerVariableDefinition ::=
+    (int IntegerVariableName DomainName) |
+    (int IntegerVariableName LowerBound UpperBound) |
+    (int IntegerVariableName (Range+)) |
+    (int IntegerVariableName Value)
+IntegerVariableName ::=
+    Symbol
+#+END_SRC
+** Remarks
+Integer variable names should not be duplicated.
+** Examples
+#+BEGIN_SRC 
+(int x0 d0)                ; x0 ∈ d0
+(int x1 1000 2000)         ; x1 ∈ { x | 1000 ≤ x ≤ 2000 }
+(int x2 ((1 3) 5 (10 12))) ; x2 ∈ { 1, 2, 3, 5, 10, 11, 12 }
+(int x3 1000)              ; x3 ∈ { 1000 }, i.e. x3 = 1000
+#+END_SRC
+* Boolean Variable Definitions
+** Syntax
+#+BEGIN_SRC 
+BooleanVariableDefinition ::=
+    (bool BooleanVariableName)
+BooleanVariableName ::=
+    Symbol
+#+END_SRC
+** Remarks
+Boolean variable names should not be duplicated.
+** Examples
+#+BEGIN_SRC 
+(bool p0)
+#+END_SRC
+* Terms
+** Syntax
+#+BEGIN_SRC 
+Term ::=
+    Integer |
+    IntegerVariableName |
+    (abs Term) |
+    (neg Term) | (- Term) |
+    (add Term*) | (+ Term*) |
+    (sub Term Term+) | (- Term Term+) |
+    (mul Term Term) | (* Term Term) |
+    (div Term Term) | (/ Term Term) |
+    (mod Term Term) | (% Term Term) |
+    (pow Term Term) |
+    (min Term Term) |
+    (max Term Term) |
+    (if LogicalFormula Term Term)
+#+END_SRC
+** Remarks
+At least one argument of mul should be an integer constant. However, some special cases (such as (< (* x y) 0)) are allowed.
+The second argument of div and mod should be a positive integer constant.
+pow is not supported.
+** Examples
+#+BEGIN_SRC 
+(- x y z)  ; means x-y-z
+#+END_SRC
+
+* ??? Relation Definitions
+** Syntax
+#+BEGIN_SRC 
+RelationDefinition ::=
+    (relation RelationName Arity RelationBody)
+RelationName ::=
+    Symbol
+Arity ::=
+    Integer
+RelationBody ::=
+    (RelationType Tuple*)
+RelationType ::=
+    supports | conflicts
+Tuple ::=
+    (Integer+)
+#+END_SRC
+** Examples
+(relation r0 2 (conflicts (0 0) (1 1) (2 2)))
+* Predicate Definitions
+** Syntax
+#+BEGIN_SRC 
+PredicateDefinition ::=
+    (predicate PredicateHead PredicateBody)
+PredicateHead ::=
+    (PredicateName Parameter*)
+PredicateName ::=
+    Symbol
+Parameter ::=
+    IntegerVariableName
+PredicateBody ::=
+    LogicalFormula
+#+END_SRC
+** Remarks
+Recursive definitions are not allowed.
+** Examples
+#+BEGIN_SRC 
+(predicate (p0 x1 x2) (<= x1 (+ x2 1))  ; (p0 x1 x2) ⇔ x1 ≤ x2+1
+#+END_SRC
+* Constraints
+** Syntax
+#+BEGIN_SRC 
+Constraint ::=
+    LogicalFormula
+
+LogicalFormula ::=
+    AtomicFormula |
+    (not LogicalFormula) | (! LogicalFormula) |
+    (and LogicalFormula*) | (&& LogicalFormula*) |
+    (or LogicalFormula*) | (|| LogicalFormula*) |
+    (imp LogicalFormula LogicalFormula) | (=> LogicalFormula LogicalFormula) |
+    (xor LogicalFormula LogicalFormula) |
+    (iff LogicalFormula LogicalFormula)
+
+AtomicFormula ::=
+    false | true | BooleanVariableName |
+    (eq Term Term) | (= Term Term) |
+    (ne Term Term) | (!= Term Term) |
+    (le Term Term) | (<= Term Term) |
+    (lt Term Term) | (< Term Term) |
+    (ge Term Term) | (>= Term Term) |
+    (gt Term Term) | (> Term Term) |
+    (RelationName Term*) |
+    (PredicateName Term*) |
+    AllDifferentConstraint |
+    WeightedSumConstraint |
+    CumulativeConstraint |
+    ElementConstraint |
+    DisjunctiveConstraint |
+    Lex_lessConstraint |
+    Lex_lesseqConstraint |
+    NvalueConstraint |
+    Global_cardinalityConstraint |
+    Global_cardinality_with_costsConstraint |
+    CountConstraint
+#+END_SRC
+** Remarks
+(and) means true.
+(or) means false.
+** Examples
+#+BEGIN_SRC 
+(or p0 (r0 x4 x5) (>= x0 (+ x0 1))
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Calldifferent.html][AllDifferent Constraints]]
+** Syntax
+#+BEGIN_SRC 
+AllDifferentConstraint ::=
+    (alldifferent Term*) |
+    (alldifferent (Term*))
+#+END_SRC
+** Remarks
+See alldifferent constaint in the Global Constraint Catalog[fn:GCC].
+** Examples
+#+BEGIN_SRC 
+(alldifferent (+ x1 1) (+ x2 2) (+ x3 3) (+ x4 4))
+(alldifferent ((+ x1 1) (+ x2 2) (+ x3 3) (+ x4 4)))
+#+END_SRC
+* WeightedSum Constraints
+** Syntax
+#+BEGIN_SRC 
+WeightedSumConstraint ::=
+    (weightedsum (WeightedPair*) ComparisonName Term)
+WeightedPair ::=
+    (Weight Term)
+Weight ::=
+    Integer
+ComparisionName ::=
+    eq | ne | le | lt | ge | gt
+#+END_SRC
+** Examples
+#+BEGIN_SRC 
+(weightedsum ((1 v0) (2 v1) (-3 v2)) gt 12)  ; means 1*v0+2*v1-3*v3 > 12
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Ccumulative.html][Cumulative Constraints]]
+** Syntax
+#+BEGIN_SRC 
+CumulativeConstraint ::=
+    (cumulative (Task*) Limit) |
+Task ::=
+    (Origin Duration End Height)
+Origin ::=
+    Term | nil
+Duration ::=
+    Term | nil
+End ::=
+    Term | nil
+Height ::=
+    Term
+Limit ::=
+    Term
+#+END_SRC
+** Remarks
+At most one of the origin, duration, and end for each task can be nil.
+See cumulative constaint in the Global Constraint Catalog[fn:GCC].
+** Examples
+#+BEGIN_SRC 
+(cumulative ((s0 2 nil 1) (s1 2 nil 1) (s2 2 nil 1) (s3 2 nil 1)) 2)
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Celement.html][Element Constraints]]
+** Syntax
+#+BEGIN_SRC 
+ElementConstraint ::=
+    (element Index (Term+) Value)
+Index ::=
+    Term
+Value ::=
+    Term
+#+END_SRC
+** Remarks
+The index value starts from 1.
+See element constaint in the Global Constraint Catalog[fn:GCC].
+** Examples
+#+BEGIN_SRC 
+(element i (x1 x2 x3 x4) xi)
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Cdisjunctive.html][Disjunctive Constraints]]
+** Syntax
+#+BEGIN_SRC 
+DisjunctiveConstraint ::=
+    (disjunctive (Task+))
+Task ::=
+    (Origin Duration)
+Origin ::=
+    Term
+Duration ::=
+    Term
+#+END_SRC
+** Remarks
+See disjunctive constaint in the Global Constraint Catalog[fn:GCC].
+** Examples
+#+BEGIN_SRC 
+(disjunctive ((s1 3) (s2 0) (s3 2) (s4 1)))
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Clex_less.html][Lex_less Constraints]]
+** Syntax
+#+BEGIN_SRC 
+Lex_lessConstraint ::=
+    (lex_less Vector Vector)
+Vector ::=
+    (Term+)
+#+END_SRC
+** Remarks
+The first vector is strictly less than the second vector.
+See lex_less constaint in the Global Constraint Catalog[fn:GCC].
+Two vectors should have the same length.
+** Examples
+#+BEGIN_SRC 
+(lex_less (x1 x2 x3) (y1 y2 y3))
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Clex_lesseq.html][Lex_lesseq Constraints]]
+** Syntax
+#+BEGIN_SRC 
+Lex_lesseqConstraint ::=
+    (lex_lesseq Vector Vector)
+Vector ::=
+    (Term+)
+#+END_SRC
+** Remarks
+The first vector is less than or equal to the second vector.
+See lex_lesseq constaint in the Global Constraint Catalog[fn:GCC].
+Two vectors should have the same length.
+** Examples
+#+BEGIN_SRC 
+(lex_lesseq (x1 x2 x3) (y1 y2 y3))
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Cnvalue.html][Nvalue Constraints]]
+** Syntax
+#+BEGIN_SRC 
+NvalueConstraint ::=
+    (nvalue Term (Term+))
+#+END_SRC
+** Remarks
+The first term is equal to the number of distinct values in the list of terms.
+See nvalue constaint in the Global Constraint Catalog[fn:GCC].
+** Examples
+#+BEGIN_SRC 
+(nvalue count (x1 x2 x3))
+#+END_SRC
+* [[http://sofdem.github.io/gccat/gccat/Cglobal_cardinality.html][Global_cardinality Constraints]]
+** Syntax
+#+BEGIN_SRC 
+Global_cardinalityConstraint ::=
+    (global_cardinality (Term+) (Cardinality+))
+Cardinality ::=
+    (Value Count)
+Value ::=
+    Integer
+Count ::=
+    Term
+#+END_SRC
+** Remarks
+See global_cardinality constaint in the Global Constraint Catalog[fn:GCC].
+** Examples
+#+BEGIN_SRC 
+(global_cardinality (x1 x2 x3) ((1 c1) (2 c2)))
+#+END_SRC
+* Global_cardinality_with_costs Constraints
+** Syntax
+#+BEGIN_SRC 
+Global_cardinality_with_costsConstraint ::=
+    (global_cardinality_with_costs (Term+) (Cardinality+) (CostTable+) Cost)
+Cardinality ::=
+    (Value Count)
+Value ::=
+    Integer
+Count ::=
+    Term
+CostTable ::=
+    (Integer Integer Integer)
+Cost ::=
+    Term
+#+END_SRC
+** Remarks
+See global_cardinality_with_costs constaint in the Global Constraint Catalog.
+** Examples
+#+BEGIN_SRC 
+(global_cardinality_with_costs (x1 x2 x3) ((1 c1) (2 c2))
+  ((1 1 2) (1 2 3) (2 1 1) (2 2 4)) cost)
+#+END_SRC
+* Count Constraints
+** Syntax
+#+BEGIN_SRC 
+CountConstraint ::=
+    (count Value (Term+) ComparisonName Term)
+Value ::=
+    Term
+ComparisionName ::=
+    eq | ne | le | lt | ge | gt
+#+END_SRC
+** Remarks
+See count constaint in the Global Constraint Catalog.
+** Examples
+#+BEGIN_SRC 
+(count 2 (x1 x2 x3) eq 1)
+#+END_SRC
+* Objective Declaration
+** Syntax
+#+BEGIN_SRC 
+ObjectiveDeclaration ::=
+    (objective Goal IntegerVariableName)
+Goal ::=
+    minimize | maximize
+#+END_SRC
+** Remarks
+Objective declaration should not be duplicated.
+MAX-CSP should not include objective declarations.
+** Examples
+#+BEGIN_SRC 
+(objective minimize x0)  ; The objective is minimizing the value of x0.
+(objective maximize x1)  ; The objective is maximizing the value of x1.
+#+END_SRC
+* CSP
+** Syntax
+#+BEGIN_SRC 
+CSP ::=
+    Statement*
+
+Statement ::=
+    DomainDefinition |
+    IntegerVariableDefinition |
+    BooleanVariableDefinition |
+    RelationDefinition |
+    PredicateDefinition |
+    ObjectiveDeclaration |
+    Constaint
+#+END_SRC
+** Remarks
+Definitions should preceed their usage.
+Objective variable should be defined before the use in the objective declaration.
+Relation names and predicate names should not be duplicated.
+** Examples
+#+BEGIN_SRC 
+; Magic Square 3 x 3
+(int x_1_1 1 9)
+(int x_1_2 1 9)
+(int x_1_3 1 9)
+(int x_2_1 1 9)
+(int x_2_2 1 9)
+(int x_2_3 1 9)
+(int x_3_1 1 9)
+(int x_3_2 1 9)
+(int x_3_3 1 9)
+(alldifferent x_1_1 x_1_2 x_1_3 x_2_1 x_2_2 x_2_3 x_3_1 x_3_2 x_3_3)
+(= (+ x_1_1 x_1_2 x_1_3) 15)
+(= (+ x_2_1 x_2_2 x_2_3) 15)
+(= (+ x_3_1 x_3_2 x_3_3) 15)
+(= (+ x_1_1 x_2_1 x_3_1) 15)
+(= (+ x_1_2 x_2_2 x_3_2) 15)
+(= (+ x_1_3 x_2_3 x_3_3) 15)
+(= (+ x_1_1 x_2_2 x_3_3) 15)
+(= (+ x_1_3 x_2_2 x_3_1) 15)
+; END
+; Golomb ruler of 4 marks
+(int length 6 7)
+(objective minimize length)
+(int m_0 0 0)
+(int m_1 0 7)
+(int m_2 0 7)
+(int m_3 0 7)
+(< m_0 m_1)
+(< m_1 m_2)
+(< m_2 m_3)
+(<= m_3 length)
+(int d_1_0 0 7)
+(= d_1_0 (- m_1 m_0))
+(int d_2_0 0 7)
+(= d_2_0 (- m_2 m_0))
+(int d_3_0 0 7)
+(= d_3_0 (- m_3 m_0))
+(int d_2_1 0 7)
+(= d_2_1 (- m_2 m_1))
+(int d_3_1 0 7)
+(= d_3_1 (- m_3 m_1))
+(int d_3_2 0 7)
+(= d_3_2 (- m_3 m_2))
+(alldifferent d_1_0 d_2_0 d_3_0 d_2_1 d_3_1 d_3_2)
+; END
+; 4-Queens Problem
+(int q_1 1 4)
+(int q_2 1 4)
+(int q_3 1 4)
+(int q_4 1 4)
+(alldifferent q_1 q_2 q_3 q_4)
+(alldifferent (+ q_1 1) (+ q_2 2) (+ q_3 3) (+ q_4 4))
+(alldifferent (- q_1 1) (- q_2 2) (- q_3 3) (- q_4 4))
+; END
+; Open-Shop Scheduling Problem gp03-01
+(int makespan 1000 1509)
+(objective minimize makespan)
+(int s_0_0 0 1509)
+(<= (+ s_0_0 661) makespan)
+(int s_0_1 0 1509)
+(<= (+ s_0_1 6) makespan)
+(int s_0_2 0 1509)
+(<= (+ s_0_2 333) makespan)
+(int s_1_0 0 1509)
+(<= (+ s_1_0 168) makespan)
+(int s_1_1 0 1509)
+(<= (+ s_1_1 489) makespan)
+(int s_1_2 0 1509)
+(<= (+ s_1_2 343) makespan)
+(int s_2_0 0 1509)
+(<= (+ s_2_0 171) makespan)
+(int s_2_1 0 1509)
+(<= (+ s_2_1 505) makespan)
+(int s_2_2 0 1509)
+(<= (+ s_2_2 324) makespan)
+(or (<= (+ s_0_0 661) s_0_1) (<= (+ s_0_1 6) s_0_0))
+(or (<= (+ s_0_0 661) s_0_2) (<= (+ s_0_2 333) s_0_0))
+(or (<= (+ s_0_1 6) s_0_2) (<= (+ s_0_2 333) s_0_1))
+(or (<= (+ s_1_0 168) s_1_1) (<= (+ s_1_1 489) s_1_0))
+(or (<= (+ s_1_0 168) s_1_2) (<= (+ s_1_2 343) s_1_0))
+(or (<= (+ s_1_1 489) s_1_2) (<= (+ s_1_2 343) s_1_1))
+(or (<= (+ s_2_0 171) s_2_1) (<= (+ s_2_1 505) s_2_0))
+(or (<= (+ s_2_0 171) s_2_2) (<= (+ s_2_2 324) s_2_0))
+(or (<= (+ s_2_1 505) s_2_2) (<= (+ s_2_2 324) s_2_1))
+(or (<= (+ s_0_0 661) s_1_0) (<= (+ s_1_0 168) s_0_0))
+(or (<= (+ s_0_0 661) s_2_0) (<= (+ s_2_0 171) s_0_0))
+(or (<= (+ s_1_0 168) s_2_0) (<= (+ s_2_0 171) s_1_0))
+(or (<= (+ s_0_1 6) s_1_1) (<= (+ s_1_1 489) s_0_1))
+(or (<= (+ s_0_1 6) s_2_1) (<= (+ s_2_1 505) s_0_1))
+(or (<= (+ s_1_1 489) s_2_1) (<= (+ s_2_1 505) s_1_1))
+(or (<= (+ s_0_2 333) s_1_2) (<= (+ s_1_2 343) s_0_2))
+(or (<= (+ s_0_2 333) s_2_2) (<= (+ s_2_2 324) s_0_2))
+(or (<= (+ s_1_2 343) s_2_2) (<= (+ s_2_2 324) s_1_2))
+; END
+#+END_SRC
+* Refrence
+[fn:GCC]: [Global Constraint Catalog](http://sofdem.github.io/gccat/)
