@@ -1,0 +1,46 @@
+
+;; 1 time slot == 15 minutes
+;; 3 work unit == 1 person
+
+;; time
+(domain openTimeSlot 1 8) ; 2 hour
+(domain workTimeSlot 1 12) ; 3 hour
+
+;; resources
+(int unitDentists 3) ; 1 unit work per time slot
+(int unitAssistants 6) ; 2 unit work per time slot
+(int numChair 3) ; 3 chairs per time slot
+
+;; patients
+;; a patient requires 1 chair.
+(int p1dur 2) ; patients 1 require 2 time slots
+(int p1dnt 1) ; patients 1 require 1 dentist work unit
+(int p1ass 1) ; patients 1 require 1 dentist work unit
+(int p1org openTimeSlot)
+
+(int p2dur 1) ; patients 2 require 1 time slots
+(int p2dnt 0) ; patients 2 require 0 dentist work unit
+(int p2ass 3) ; patients 2 require 3 dentist work unit
+(int p2org openTimeSlot)
+
+(int p3dur 4) ; patients 3 require 4 time slots
+(int p3dnt 2) ; patients 3 require 2 dentist work unit
+(int p3ass 3) ; patients 3 require 3 dentist work unit
+(int p3org openTimeSlot)
+
+;; Scheduling
+;;;; Chair
+(cumulative ((p1org p1dur nil 1)
+	     (p2org p2dur nil 1)
+	     (p3org p3dur nil 1) )
+	    3 )
+;;;; Dentist
+(cumulative ((p1org p1dur nil p1dnt)
+	     (p2org p2dur nil p2dnt)
+	     (p3org p3dur nil p3dnt) )
+	    unitDentists )
+;;;; assistant
+(cumulative ((p1org p1dur nil p1ass)
+	     (p2org p2dur nil p2ass)
+	     (p3org p3dur nil p3ass) )
+	    unitAssistants )
